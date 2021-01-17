@@ -56,6 +56,9 @@ struct Method {
 };
 
 class Class : public Object {
+private:
+	std::string name_;
+  std::unordered_map<std::string, Method> methods_;
 public:
   explicit Class(std::string name, std::vector<Method> methods, const Class* parent);
   const Method* GetMethod(const std::string& name) const;
@@ -64,6 +67,9 @@ public:
 };
 
 class ClassInstance : public Object {
+private:
+	const Class& class_;
+	Closure fields_;
 public:
   explicit ClassInstance(const Class& cls);
 

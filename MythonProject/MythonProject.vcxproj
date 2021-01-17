@@ -29,7 +29,6 @@
   <ItemGroup>
     <ClCompile Include="comparators.cpp" />
     <ClCompile Include="lexer.cpp" />
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="mython.cpp" />
     <ClCompile Include="object.cpp" />
     <ClCompile Include="object_holder.cpp" />

@@ -121,11 +121,11 @@ void TestAll() {
   Runtime::RunObjectHolderTests(tr);
   Runtime::RunObjectsTests(tr);
   Ast::RunUnitTests(tr);
-  Parse::RunLexerTests(tr);
-  TestParseProgram(tr);
+  //Parse::RunLexerTests(tr);
+  //TestParseProgram(tr);
 
-  RUN_TEST(tr, TestSimplePrints);
-  RUN_TEST(tr, TestAssignments);
-  RUN_TEST(tr, TestArithmetics);
-  RUN_TEST(tr, TestVariablesArePointers);
+  //RUN_TEST(tr, TestSimplePrints);
+  //RUN_TEST(tr, TestAssignments);
+  //RUN_TEST(tr, TestArithmetics);
+  //RUN_TEST(tr, TestVariablesArePointers);
 }

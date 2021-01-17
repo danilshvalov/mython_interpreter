@@ -38,9 +38,6 @@
     <ClCompile Include="lexer.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="statement_test.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
