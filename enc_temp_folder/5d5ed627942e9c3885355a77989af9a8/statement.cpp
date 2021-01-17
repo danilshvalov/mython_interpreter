@@ -93,10 +93,10 @@ namespace Ast {
 	}
 
 	ObjectHolder Add::Execute(Closure& closure) {
-		if (const auto& left = lhs->Execute(closure).TryAs<Runtime::Number>(); const auto & right = rhs->Execute(closure).TryAs<Runtime::Number>()) {
+		if (auto left = lhs->Execute(closure).TryAs<Runtime::Number>(); auto right = rhs->Execute(closure).TryAs<Runtime::Number>()) {
 			return ObjectHolder::Own(Runtime::Number(left->GetValue() + right->GetValue()));
 		}
-		if (const auto& left = lhs->Execute(closure).TryAs<Runtime::String>(); const auto & right = rhs->Execute(closure).TryAs<Runtime::String>()) {
+		if (auto left = lhs->Execute(closure).TryAs<Runtime::String>(); auto right = rhs->Execute(closure).TryAs<Runtime::String>()) {
 			return ObjectHolder::Own(Runtime::String(left->GetValue() + right->GetValue()));
 		}
 		throw std::runtime_error("Wrong values in Add");

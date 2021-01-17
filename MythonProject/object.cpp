@@ -27,18 +27,11 @@ namespace Runtime {
 	ClassInstance::ClassInstance(const Class& cls) : class_(cls) {}
 
 	ObjectHolder ClassInstance::Call(const std::string& method, const std::vector<ObjectHolder>& actual_args) {
-		auto class_method = class_.GetMethod(method);
-		if (class_method->name == "__str__") {
-			return {};
-		} else {
-			for (size_t i = 0; i < actual_args.size(); ++i) {
-				fields_[class_method->formal_params[i]] = actual_args[i];
-			}
-			return class_method->body->Execute(fields_);
+		const auto& class_method = class_.GetMethod(method);
+		for (size_t i = 0; i < actual_args.size(); ++i) {
+			fields_[class_method->formal_params[i]] = actual_args[i];
 		}
-		//Ast::MethodCall(std::move(class_method), method, )
-		//return Ast::MethodCall(class_.GetMethod(method)->body->Execute(actual_args);
-		return {};
+		return class_method->body->Execute(fields_);
 	}
 
 	Class::Class(std::string name, std::vector<Method> methods, const Class* parent) {
