@@ -1,13 +1,13 @@
 #pragma once
 
-#include "object_holder.h"
-#include "object.h"
-
-#include <unordered_map>
-#include <string>
 #include <functional>
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
+
+#include "object.h"
+#include "object_holder.h"
 
 class TestRunner;
 
@@ -22,8 +22,7 @@ template <typename T>
 struct ValueStatement : Statement {
   T value;
 
-  explicit ValueStatement(T v) : value(std::move(v)) {
-  }
+  explicit ValueStatement(T v) : value(std::move(v)) {}
 
   ObjectHolder Execute(Runtime::Closure&) override {
     return ObjectHolder::Share(value);
@@ -55,18 +54,17 @@ struct FieldAssignment : Statement {
   std::string field_name;
   std::unique_ptr<Statement> right_value;
 
-  FieldAssignment(VariableValue object, std::string field_name, std::unique_ptr<Statement> rv);
+  FieldAssignment(VariableValue object, std::string field_name,
+                  std::unique_ptr<Statement> rv);
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 struct None : Statement {
-  ObjectHolder Execute(Runtime::Closure&) override {
-    return ObjectHolder();
-  }
+  ObjectHolder Execute(Runtime::Closure&) override { return ObjectHolder(); }
 };
 
 class Print : public Statement {
-public:
+ public:
   explicit Print(std::unique_ptr<Statement> argument);
   explicit Print(std::vector<std::unique_ptr<Statement>> args);
 
@@ -76,7 +74,7 @@ public:
 
   static void SetOutputStream(std::ostream& output_stream);
 
-private:
+ private:
   std::vector<std::unique_ptr<Statement>> args;
   static std::ostream* output;
 };
@@ -86,11 +84,8 @@ struct MethodCall : Statement {
   std::string method;
   std::vector<std::unique_ptr<Statement>> args;
 
-  MethodCall(
-    std::unique_ptr<Statement> object,
-    std::string method,
-    std::vector<std::unique_ptr<Statement>> args
-  );
+  MethodCall(std::unique_ptr<Statement> object, std::string method,
+             std::vector<std::unique_ptr<Statement>> args);
 
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
@@ -100,83 +95,82 @@ struct NewInstance : Statement {
   std::vector<std::unique_ptr<Statement>> args;
 
   NewInstance(const Runtime::Class& class_);
-  NewInstance(const Runtime::Class& class_, std::vector<std::unique_ptr<Statement>> args);
+  NewInstance(const Runtime::Class& class_,
+              std::vector<std::unique_ptr<Statement>> args);
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class UnaryOperation : public Statement {
-public:
-  UnaryOperation(std::unique_ptr<Statement> argument) : argument(std::move(argument)) {
-  }
+ public:
+  UnaryOperation(std::unique_ptr<Statement> argument)
+      : argument(std::move(argument)) {}
 
-protected:
+ protected:
   std::unique_ptr<Statement> argument;
 };
 
 class Stringify : public UnaryOperation {
-public:
+ public:
   using UnaryOperation::UnaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class BinaryOperation : public Statement {
-public:
-  BinaryOperation(std::unique_ptr<Statement> lhs, std::unique_ptr<Statement> rhs)
-    : lhs(std::move(lhs))
-    , rhs(std::move(rhs))
-  {
-  }
+ public:
+  BinaryOperation(std::unique_ptr<Statement> lhs,
+                  std::unique_ptr<Statement> rhs)
+      : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
-protected:
+ protected:
   std::unique_ptr<Statement> lhs, rhs;
 };
 
 class Add : public BinaryOperation {
-public:
+ public:
   using BinaryOperation::BinaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class Sub : public BinaryOperation {
-public:
+ public:
   using BinaryOperation::BinaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class Mult : public BinaryOperation {
-public:
+ public:
   using BinaryOperation::BinaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class Div : public BinaryOperation {
-public:
+ public:
   using BinaryOperation::BinaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class Or : public BinaryOperation {
-public:
+ public:
   using BinaryOperation::BinaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class And : public BinaryOperation {
-public:
+ public:
   using BinaryOperation::BinaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class Not : public UnaryOperation {
-public:
+ public:
   using UnaryOperation::UnaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;
 };
 
 class Compound : public Statement {
-public:
-  template <typename ...Args>
-  explicit Compound(Args&& ...args) {
+ public:
+  template <typename... Args>
+  explicit Compound(Args&&... args) {
     (statements.push_back(std::forward<Args>(args)), ...);
   }
 
@@ -186,68 +180,61 @@ public:
 
   ObjectHolder Execute(Runtime::Closure& closure) override;
 
-private:
+ private:
   std::vector<std::unique_ptr<Statement>> statements;
 };
 
 class Return : public Statement {
-public:
+ public:
   explicit Return(std::unique_ptr<Statement> statement)
-    : statement(std::move(statement))
-  {
-  }
+      : statement(std::move(statement)) {}
 
   ObjectHolder Execute(Runtime::Closure& closure) override;
 
-private:
+ private:
   std::unique_ptr<Statement> statement;
 };
 
 class ClassDefinition : public Statement {
-public:
+ public:
   explicit ClassDefinition(ObjectHolder cls);
 
   ObjectHolder Execute(Runtime::Closure& closure) override;
 
-private:
+ private:
   ObjectHolder cls;
   const std::string& class_name;
 };
 
 class IfElse : public Statement {
-public:
-  IfElse(
-    std::unique_ptr<Statement> condition,
-    std::unique_ptr<Statement> if_body,
-    std::unique_ptr<Statement> else_body
-  );
+ public:
+  IfElse(std::unique_ptr<Statement> condition,
+         std::unique_ptr<Statement> if_body,
+         std::unique_ptr<Statement> else_body);
 
   ObjectHolder Execute(Runtime::Closure& closure) override;
 
-private:
+ private:
   std::unique_ptr<Statement> condition, if_body, else_body;
 };
 
 class Comparison : public Statement {
-public:
-  using Comparator = std::function<bool(const ObjectHolder&, const ObjectHolder&)>;
+ public:
+  using Comparator =
+      std::function<bool(const ObjectHolder&, const ObjectHolder&)>;
 
-  Comparison(
-    Comparator cmp,
-    std::unique_ptr<Statement> lhs,
-    std::unique_ptr<Statement> rhs
-  );
+  Comparison(Comparator cmp, std::unique_ptr<Statement> lhs,
+             std::unique_ptr<Statement> rhs);
 
   ObjectHolder Execute(Runtime::Closure& closure) override;
 
-private:
+ private:
   Comparator comparator;
   std::unique_ptr<Statement> left, right;
 };
 
 void RunUnitTests(TestRunner& tr);
 
-}
+}  // namespace Ast
 
 using Statement = Ast::Statement;
-

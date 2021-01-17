@@ -12,8 +12,8 @@ namespace Runtime {
 	}
 
 	bool ClassInstance::HasMethod(const std::string& method, size_t argument_count) const {
-		//auto it = class_.GetMethod()
-		return {};
+		const auto& method_ptr = class_.GetMethod(method);
+		return method_ptr && method_ptr->formal_params.size() == argument_count;
 	}
 
 	const Closure& ClassInstance::Fields() const {
@@ -42,7 +42,10 @@ namespace Runtime {
 	}
 
 	const Method* Class::GetMethod(const std::string& name) const {
-		return &methods_.at(name);
+		if (auto it = methods_.find(name); it != methods_.end()) {
+			return &it->second;
+		}
+		return nullptr;
 	}
 
 	void Class::Print(ostream& os) {
