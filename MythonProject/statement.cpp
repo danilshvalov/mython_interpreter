@@ -16,14 +16,14 @@ namespace Ast {
 		return object;
 	}
 
-	Assignment::Assignment(std::string var, std::unique_ptr<Statement> rv) : var_name(std::move(var)), right_value(std::move(rv)) {
+	Assignment::Assignment(string var, unique_ptr<Statement> rv) : var_name(move(var)), right_value(move(rv)) {
 	}
 
-	VariableValue::VariableValue(std::string var_name) {
-		dotted_ids.push_back(std::move(var_name));
+	VariableValue::VariableValue(string var_name) {
+		dotted_ids.push_back(move(var_name));
 	}
 
-	VariableValue::VariableValue(std::vector<std::string> dotted_ids) : dotted_ids(std::move(dotted_ids)) {}
+	VariableValue::VariableValue(vector<string> dotted_ids) : dotted_ids(move(dotted_ids)) {}
 
 	ObjectHolder VariableValue::Execute(Closure& closure) {
 		for (const auto& name : dotted_ids) {
@@ -31,18 +31,18 @@ namespace Ast {
 				return it->second;
 			}
 		}
-		throw std::runtime_error("Variable value: Unexpected variable");
+		throw runtime_error("Variable value: Unexpected variable");
 	}
 
-	unique_ptr<Print> Print::Variable(std::string var) {
-		return std::make_unique<Print>(std::make_unique<VariableValue>(var));
+	unique_ptr<Print> Print::Variable(string var) {
+		return make_unique<Print>(make_unique<VariableValue>(var));
 	}
 
 	Print::Print(unique_ptr<Statement> argument) {
-		args.push_back(std::move(argument));
+		args.push_back(move(argument));
 	}
 
-	Print::Print(vector<unique_ptr<Statement>> args) : args(std::move(args)) {}
+	Print::Print(vector<unique_ptr<Statement>> args) : args(move(args)) {}
 
 	ObjectHolder Print::Execute(Closure& closure) {
 		bool is_first = true;
@@ -68,9 +68,9 @@ namespace Ast {
 	}
 
 	MethodCall::MethodCall(
-		std::unique_ptr<Statement> object
-		, std::string method
-		, std::vector<std::unique_ptr<Statement>> args
+		unique_ptr<Statement> object
+		, string method
+		, vector<unique_ptr<Statement>> args
 	) {
 	}
 
@@ -81,7 +81,7 @@ namespace Ast {
 	ObjectHolder Stringify::Execute(Closure& closure) {
 		auto object = argument.release()->Execute(closure);
 		if (const auto& instance = object.TryAs<Runtime::Number>()) {
-			return ObjectHolder::Own(Runtime::String(std::to_string(instance->GetValue())));
+			return ObjectHolder::Own(Runtime::String(to_string(instance->GetValue())));
 		}
 		if (const auto& instance = object.TryAs<Runtime::ClassInstance>()) {
 			return instance->Call("__str__", {});
@@ -89,17 +89,33 @@ namespace Ast {
 		if (const auto& instance = object.TryAs<Runtime::String>()) {
 			return object;
 		}
-		throw std::runtime_error("Stringify: Unexpected value");
+		throw runtime_error("Stringify: Unexpected value");
 	}
 
 	ObjectHolder Add::Execute(Closure& closure) {
-		if (const auto& left = lhs->Execute(closure).TryAs<Runtime::Number>(); const auto & right = rhs->Execute(closure).TryAs<Runtime::Number>()) {
-			return ObjectHolder::Own(Runtime::Number(left->GetValue() + right->GetValue()));
+		using Runtime::Number, Runtime::String, Runtime::ClassInstance;
+
+		auto [left_obj, right_obj] = make_tuple(lhs->Execute(closure), rhs->Execute(closure));
+
+		if (const auto& [left_inst, right_inst] = make_tuple(left_obj.TryAs<Number>(), right_obj.TryAs<Number>()); left_inst && right_inst) {
+			return ObjectHolder::Own(Number(left_inst->GetValue() + right_inst->GetValue()));
 		}
-		if (const auto& left = lhs->Execute(closure).TryAs<Runtime::String>(); const auto & right = rhs->Execute(closure).TryAs<Runtime::String>()) {
-			return ObjectHolder::Own(Runtime::String(left->GetValue() + right->GetValue()));
+
+		if (const auto& [left_inst, right_inst] = make_tuple(left_obj.TryAs<String>(), right_obj.TryAs<String>()); left_inst && right_inst) {
+			return ObjectHolder::Own(String(left_inst->GetValue() + right_inst->GetValue()));
 		}
-		throw std::runtime_error("Wrong values in Add");
+
+		// left_inst не const, потому что Call не константный метод
+		if (auto left_inst = left_obj.TryAs<ClassInstance>(); left_inst) {
+			return left_inst->Call("__add__", {right_obj});
+		}
+
+		// right_inst не const, потому что Call не константный метод
+		if (auto right_inst = right_obj.TryAs<ClassInstance>(); right_inst) {
+			return right_inst->Call("__add__", { left_obj });
+		}
+
+		throw runtime_error("Add: Wrong values");
 	}
 
 	ObjectHolder Sub::Execute(Closure& closure) {
@@ -122,18 +138,18 @@ namespace Ast {
 		return {};
 	}
 
-	ClassDefinition::ClassDefinition(ObjectHolder class_) : cls(std::move(class_)), class_name(cls.TryAs<Runtime::Class>()->GetName()) {}
+	ClassDefinition::ClassDefinition(ObjectHolder class_) : cls(move(class_)), class_name(cls.TryAs<Runtime::Class>()->GetName()) {}
 
 	ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) {
 		return {};
 	}
 
 	FieldAssignment::FieldAssignment(
-		VariableValue object, std::string field_name, std::unique_ptr<Statement> rv
+		VariableValue object, string field_name, unique_ptr<Statement> rv
 	)
-		: object(std::move(object))
-		, field_name(std::move(field_name))
-		, right_value(std::move(rv)) {
+		: object(move(object))
+		, field_name(move(field_name))
+		, right_value(move(rv)) {
 	}
 
 	ObjectHolder FieldAssignment::Execute(Runtime::Closure& closure) {
@@ -148,9 +164,9 @@ namespace Ast {
 	}
 
 	IfElse::IfElse(
-		std::unique_ptr<Statement> condition,
-		std::unique_ptr<Statement> if_body,
-		std::unique_ptr<Statement> else_body
+		unique_ptr<Statement> condition,
+		unique_ptr<Statement> if_body,
+		unique_ptr<Statement> else_body
 	) {
 	}
 
@@ -180,10 +196,10 @@ namespace Ast {
 	}
 
 	NewInstance::NewInstance(
-		const Runtime::Class& class_, std::vector<std::unique_ptr<Statement>> args
+		const Runtime::Class& class_, vector<unique_ptr<Statement>> args
 	)
 		: class_(class_)
-		, args(std::move(args)) {
+		, args(move(args)) {
 	}
 
 	NewInstance::NewInstance(const Runtime::Class& class_) : NewInstance(class_, {}) {
