@@ -18,6 +18,28 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="comparators.h" />
+    <ClInclude Include="lexer.h" />
+    <ClInclude Include="object.h" />
+    <ClInclude Include="object_holder.h" />
+    <ClInclude Include="parse.h" />
+    <ClInclude Include="statement.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="comparators.cpp" />
+    <ClCompile Include="lexer.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="mython.cpp" />
+    <ClCompile Include="object.cpp" />
+    <ClCompile Include="object_holder.cpp" />
+    <ClCompile Include="object_holder_test.cpp" />
+    <ClCompile Include="object_test.cpp" />
+    <ClCompile Include="parse.cpp" />
+    <ClCompile Include="parse_test.cpp" />
+    <ClCompile Include="statement.cpp" />
+    <ClCompile Include="statement_test.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
