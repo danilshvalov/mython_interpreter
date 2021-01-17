@@ -82,7 +82,7 @@ ObjectHolder MethodCall::Execute(Closure& closure) {
   transform(args.begin(), args.end(), back_inserter(method_args),
             [&closure](auto& arg) { return arg->Execute(closure); });
 
-	return inst->Call(method, method_args);
+  return inst->Call(method, method_args);
 }
 
 ObjectHolder Stringify::Execute(Closure& closure) {
@@ -91,7 +91,14 @@ ObjectHolder Stringify::Execute(Closure& closure) {
     return ObjectHolder::Own(Runtime::String(to_string(instance->GetValue())));
   }
   if (const auto& instance = object.TryAs<Runtime::ClassInstance>()) {
-    return instance->Call("__str__", {});
+    const auto& class_obj = instance->Call("__str__", {});
+    if (const auto& obj_inst = class_obj.TryAs<Runtime::Number>()) {
+      return ObjectHolder::Own(
+          Runtime::String(to_string(obj_inst->GetValue())));
+    }
+  	if (class_obj.TryAs<Runtime::String>()) {
+	    return class_obj;
+    }
   }
   if (const auto& instance = object.TryAs<Runtime::String>()) {
     return object;

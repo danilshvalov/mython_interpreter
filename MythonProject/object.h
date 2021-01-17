@@ -59,6 +59,7 @@ class Class : public Object {
 private:
 	std::string name_;
   std::unordered_map<std::string, Method> methods_;
+	const Class* parent_;
 public:
   explicit Class(std::string name, std::vector<Method> methods, const Class* parent);
   const Method* GetMethod(const std::string& name) const;
