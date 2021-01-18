@@ -29,7 +29,7 @@ ObjectHolder ClassInstance::Call(const std::string& method,
     if (method == "__str__") {
       stringstream ptr;
       ptr << this;
-      return ObjectHolder::Own(String(ptr.str());
+      return ObjectHolder::Own(String(ptr.str()));
     }
     throw runtime_error("Class: method \"" + method + "\" not found");
   }
