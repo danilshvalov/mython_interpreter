@@ -110,6 +110,9 @@ class UnaryOperation : public Statement {
 };
 
 class Stringify : public UnaryOperation {
+ private:
+	ObjectHolder ToString(ObjectHolder object);
+
  public:
   using UnaryOperation::UnaryOperation;
   ObjectHolder Execute(Runtime::Closure& closure) override;

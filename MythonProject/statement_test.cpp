@@ -191,8 +191,7 @@ void TestStringify() {
 
     std::ostringstream expected_output;
     expected_output << closure.at("x").Get();
-    auto exp = expected_output.str();
-  	std::cout << exp << endl;
+
     Stringify str(make_unique<VariableValue>("x"));
     ASSERT_OBJECT_VALUE_EQUAL(str.Execute(closure), expected_output.str());
   }

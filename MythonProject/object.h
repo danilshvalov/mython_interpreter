@@ -1,12 +1,11 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <iostream>
 
 #include "object_holder.h"
 
@@ -17,27 +16,20 @@ class Statement;
 class TestRunner;
 
 namespace Runtime {
-template <typename T>
-class ValueObject;
-
-using String = ValueObject<std::string>;
-using Number = ValueObject<int>;
-
 class Object {
  public:
   virtual ~Object() = default;
   virtual void Print(std::ostream& os) = 0;
 };
 
+template <typename T>
+class ValueObject;
 
-
-struct StringConvertible {
-  virtual ~StringConvertible() = default;
-  virtual std::string ToString() { return "null"; }
-};
+using String = ValueObject<std::string>;
+using Number = ValueObject<int>;
 
 template <typename T>
-class ValueObject : public Object, public StringConvertible {
+class ValueObject : public Object {
  public:
   ValueObject(T v) : value(v) {}
 
@@ -48,9 +40,6 @@ class ValueObject : public Object, public StringConvertible {
  private:
   T value;
 };
-
-	
-
 
 class Bool : public ValueObject<bool> {
  public:
@@ -95,6 +84,7 @@ class ClassInstance : public Object {
   Closure& Fields();
   const Closure& Fields() const;
 };
+
 
 void RunObjectsTests(TestRunner& test_runner);
 

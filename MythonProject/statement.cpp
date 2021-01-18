@@ -85,25 +85,35 @@ ObjectHolder MethodCall::Execute(Closure& closure) {
   return inst->Call(method, method_args);
 }
 
-ObjectHolder Stringify::Execute(Closure& closure) {
-  auto object = argument.release()->Execute(closure);
-  if (const auto& instance = object.TryAs<Runtime::Number>()) {
-    return ObjectHolder::Own(Runtime::String(to_string(instance->GetValue())));
-  }
-  if (const auto& instance = object.TryAs<Runtime::ClassInstance>()) {
-    const auto& class_obj = instance->Call("__str__", {});
-    if (const auto& obj_inst = class_obj.TryAs<Runtime::Number>()) {
-      return ObjectHolder::Own(
-          Runtime::String(to_string(obj_inst->GetValue())));
-    }
-  	if (class_obj.TryAs<Runtime::String>()) {
-	    return class_obj;
-    }
-  }
-  if (const auto& instance = object.TryAs<Runtime::String>()) {
+ObjectHolder Stringify::ToString(ObjectHolder object) {
+  using Runtime::Number, Runtime::String, Runtime::Bool;
+
+  if (const auto& inst = object.TryAs<String>(); inst) {
     return object;
   }
+
+  if (const auto& inst = object.TryAs<Number>(); inst) {
+    return Runtime::ObjectHolder::Own(String(to_string(inst->GetValue())));
+  }
+
+  if (const auto& inst = object.TryAs<Bool>(); inst) {
+    return Runtime::ObjectHolder::Own(
+        String((inst->GetValue() ? "True" : "False")));
+  }
+
   throw runtime_error("Stringify: Unexpected value");
+}
+
+ObjectHolder Stringify::Execute(Closure& closure) {
+  using Runtime::ClassInstance;
+  auto object = argument.release()->Execute(closure);
+
+  if (const auto& inst = object.TryAs<ClassInstance>(); inst) {
+    const auto& class_object = inst->Call("__str__", {});
+    return ToString(class_object);
+  }
+
+  return ToString(object);
 }
 
 ObjectHolder Add::Execute(Closure& closure) {

@@ -45,6 +45,7 @@ ObjectHolder ClassInstance::Call(const std::string& method,
 Class::Class(std::string name, std::vector<Method> methods, const Class* parent)
     : name_(std::move(name)), parent_(parent) {
   methods_.reserve(methods.size());
+	
   for (auto& method : methods) {
     methods_[method.name] = std::move(method);
   }
