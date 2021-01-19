@@ -31,7 +31,7 @@ void RunMythonProgram(istream& input, ostream& output) {
 int main() {
   TestAll();
 
-  RunMythonProgram(cin, cout);
+  //RunMythonProgram(cin, cout);
 
   return 0;
 }
@@ -124,8 +124,8 @@ void TestAll() {
   //Parse::RunLexerTests(tr);
   //TestParseProgram(tr);
 
-  //RUN_TEST(tr, TestSimplePrints);
-  //RUN_TEST(tr, TestAssignments);
-  //RUN_TEST(tr, TestArithmetics);
-  //RUN_TEST(tr, TestVariablesArePointers);
+  RUN_TEST(tr, TestSimplePrints);
+  RUN_TEST(tr, TestAssignments);
+  RUN_TEST(tr, TestArithmetics);
+  RUN_TEST(tr, TestVariablesArePointers);
 }

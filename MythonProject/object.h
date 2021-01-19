@@ -56,8 +56,18 @@ struct Method {
 class Class : public Object {
  private:
   std::string name_;
-  std::unordered_map<std::string, Method> methods_;
+  std::unordered_map<std::string, const Method*> methods_;
+  std::vector<Method> methods_impl_;
   const Class* parent_;
+
+  void InitParentMethods(const Class* parent) {
+    if (parent) {
+      InitParentMethods(parent->parent_);
+      for (const auto& method : parent->methods_impl_) {
+        methods_[method.name] = &method;
+      }
+    }
+  }
 
  public:
   explicit Class(std::string name, std::vector<Method> methods,
@@ -83,8 +93,11 @@ class ClassInstance : public Object {
 
   Closure& Fields();
   const Closure& Fields() const;
-};
 
+  friend bool operator==(const ClassInstance& lhs, const ClassInstance& rhs) {
+    return &lhs.class_ == &rhs.class_;
+  }
+};
 
 void RunObjectsTests(TestRunner& test_runner);
 

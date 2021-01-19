@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <sstream>
 
 #include "object.h"
@@ -13,9 +14,7 @@ namespace Ast {
 using Runtime::Closure;
 
 ObjectHolder Assignment::Execute(Closure& closure) {
-  auto object = right_value.release()->Execute(closure);
-  closure[var_name] = object;
-  return object;
+  return closure[var_name] = right_value->Execute(closure);
 }
 
 Assignment::Assignment(string var, unique_ptr<Statement> rv)
@@ -29,12 +28,16 @@ VariableValue::VariableValue(vector<string> dotted_ids)
     : dotted_ids(move(dotted_ids)) {}
 
 ObjectHolder VariableValue::Execute(Closure& closure) {
-  for (const auto& name : dotted_ids) {
-    if (auto it = closure.find(name); it != closure.end()) {
-      return it->second;
-    }
+  const string& var_name = dotted_ids.front();
+  if (auto it = closure.find(var_name); it == closure.end()) {
+    throw runtime_error("Variable value: Unexpected variable");
   }
-  throw runtime_error("Variable value: Unexpected variable");
+
+  return accumulate(
+      next(begin(dotted_ids)), end(dotted_ids), closure.at(var_name),
+      [](ObjectHolder parent, const string& name) {
+        return parent.TryAs<Runtime::ClassInstance>()->Fields().at(name);
+      });
 }
 
 unique_ptr<Print> Print::Variable(string var) {
@@ -67,7 +70,8 @@ ostream* Print::output = &cout;
 void Print::SetOutputStream(ostream& output_stream) { output = &output_stream; }
 
 MethodCall::MethodCall(unique_ptr<Statement> object, string method,
-                       vector<unique_ptr<Statement>> args) {}
+                       vector<unique_ptr<Statement>> args)
+    : object(move(object)), method(move(method)), args(move(args)) {}
 
 ObjectHolder MethodCall::Execute(Closure& closure) {
   auto executed_obj = object->Execute(closure);
@@ -138,12 +142,12 @@ ObjectHolder Add::Execute(Closure& closure) {
 
   // left_inst не const, потому что Call не константный метод
   if (auto left_inst = left_obj.TryAs<ClassInstance>(); left_inst) {
-    return left_inst->Call("__add__", {right_obj});
+    return left_inst->Call("__add__", {move(right_obj)});
   }
 
   // right_inst не const, потому что Call не константный метод
   if (auto right_inst = right_obj.TryAs<ClassInstance>(); right_inst) {
-    return right_inst->Call("__add__", {left_obj});
+    return right_inst->Call("__add__", {move(left_obj)});
   }
 
   throw runtime_error("Add: Wrong values");
@@ -167,14 +171,24 @@ ObjectHolder Div::Execute(Runtime::Closure& closure) {
       rhs->Execute(closure).TryAs<Runtime::Number>()->GetValue()));
 }
 
-ObjectHolder Compound::Execute(Closure& closure) { return {}; }
+ObjectHolder Compound::Execute(Closure& closure) {
+  for (auto& statement : statements) {
+    statement->Execute(closure);
+  }
 
-ObjectHolder Return::Execute(Closure& closure) { return {}; }
+  return ObjectHolder::None();
+}
+
+ObjectHolder Return::Execute(Closure& closure) {
+  return statement->Execute(closure);
+}
 
 ClassDefinition::ClassDefinition(ObjectHolder class_)
     : cls(move(class_)), class_name(cls.TryAs<Runtime::Class>()->GetName()) {}
 
-ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) { return {}; }
+ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) {
+  return ObjectHolder::None();
+}
 
 FieldAssignment::FieldAssignment(VariableValue object, string field_name,
                                  unique_ptr<Statement> rv)
@@ -183,27 +197,53 @@ FieldAssignment::FieldAssignment(VariableValue object, string field_name,
       right_value(move(rv)) {}
 
 ObjectHolder FieldAssignment::Execute(Runtime::Closure& closure) {
-  auto value = right_value->Execute(closure);
-  for (const auto& idx : object.dotted_ids) {
-    if (auto it = closure.find(idx); it != closure.end()) {
-      it->second.TryAs<Runtime::ClassInstance>()->Fields().insert(
-          {field_name, value});
-    }
+  // auto value = right_value->Execute(closure);
+  // for (const auto& idx : object.dotted_ids) {
+  //  if (auto it = closure.find(idx); it != closure.end()) {
+  //    it->second.TryAs<Runtime::ClassInstance>()->Fields().insert(
+  //        {field_name, move(value)});
+  //  }
+  //}
+
+  // return closure[field_name] = value;
+  ObjectHolder cur_obj_holder = closure[object.dotted_ids.front()];
+  for (size_t i = 1; i < object.dotted_ids.size(); ++i) {
+    cur_obj_holder = cur_obj_holder.TryAs<Runtime::ClassInstance>()
+                         ->Fields()[object.dotted_ids[i]];
   }
-  closure[field_name] = value;
-  return value;
+  return cur_obj_holder.TryAs<Runtime::ClassInstance>()->Fields()[field_name] =
+             right_value->Execute(closure);
 }
 
 IfElse::IfElse(unique_ptr<Statement> condition, unique_ptr<Statement> if_body,
-               unique_ptr<Statement> else_body) {}
+               unique_ptr<Statement> else_body)
+    : condition(move(condition)),
+      if_body(move(if_body)),
+      else_body(move(else_body)) {}
 
-ObjectHolder IfElse::Execute(Runtime::Closure& closure) { return {}; }
+ObjectHolder IfElse::Execute(Runtime::Closure& closure) {
+  if (condition->Execute(closure).TryAs<Runtime::Bool>()->GetValue()) {
+    return if_body->Execute(closure);
+  }
+  return else_body->Execute(closure);
+}
 
-ObjectHolder Or::Execute(Runtime::Closure& closure) { return {}; }
+ObjectHolder Or::Execute(Runtime::Closure& closure) {
+  return ObjectHolder::Own(
+      Runtime::Bool(lhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue() ||
+                    rhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue()));
+}
 
-ObjectHolder And::Execute(Runtime::Closure& closure) { return {}; }
+ObjectHolder And::Execute(Runtime::Closure& closure) {
+  return ObjectHolder::Own(
+      Runtime::Bool(lhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue() &&
+                    rhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue()));
+}
 
-ObjectHolder Not::Execute(Runtime::Closure& closure) { return {}; }
+ObjectHolder Not::Execute(Runtime::Closure& closure) {
+  return ObjectHolder::Own(Runtime::Bool(
+      argument->Execute(closure).TryAs<Runtime::Bool>()->GetValue()));
+}
 
 Comparison::Comparison(Comparator cmp, unique_ptr<Statement> lhs,
                        unique_ptr<Statement> rhs) {}
