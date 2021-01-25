@@ -40,7 +40,7 @@ ObjectHolder::operator bool() const {
 }
 
 bool IsTrue(ObjectHolder object) {
-  return object.TryAs<Bool>();
+  return object.TryAs<Bool>()->GetValue();
 }
 
 }

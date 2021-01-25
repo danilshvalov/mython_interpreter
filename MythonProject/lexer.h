@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <optional>
 
+//#include "lexer.h"
+
 class TestRunner;
 
 namespace Parse {

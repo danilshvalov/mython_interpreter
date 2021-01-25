@@ -10,7 +10,10 @@ using namespace std;
 
 namespace Runtime {
 
-void ClassInstance::Print(std::ostream& os) {}
+void ClassInstance::Print(std::ostream& os) {
+  auto res = Call("__str__", {});
+  res->Print(os);
+}
 
 bool ClassInstance::HasMethod(const std::string& method,
                               size_t argument_count) const {
@@ -22,9 +25,7 @@ const Closure& ClassInstance::Fields() const { return fields_; }
 
 Closure& ClassInstance::Fields() { return fields_; }
 
-ClassInstance::ClassInstance(const Class& cls) : class_(cls) {
-	Call("__init__", {});
-}
+ClassInstance::ClassInstance(const Class& cls) : class_(cls) {}
 
 ObjectHolder ClassInstance::Call(const std::string& method,
                                  const std::vector<ObjectHolder>& actual_args) {
@@ -46,21 +47,16 @@ ObjectHolder ClassInstance::Call(const std::string& method,
             [](string formal, ObjectHolder actual) {
               return make_pair(formal, actual);
             });
-
-  return instance_method.body->Execute(argument_closure);
-  // const auto& class_method = class_.GetMethod(method);
-
-  // Closure args = {{"self", ObjectHolder::Share(*this)}};
-
-  // for (size_t i = 0; i < actual_args.size(); ++i) {
-  //  args[class_method->formal_params[i]] = actual_args[i];
-  //}
-  // return class_method->body->Execute(args);
+  try {
+    return instance_method.body->Execute(argument_closure);
+  } catch (ObjectHolder& returned_value) {
+    return returned_value;
+  }
 }
 
 Class::Class(std::string name, std::vector<Method> methods, const Class* parent)
     : name_(std::move(name)), parent_(parent) {
-	InitParentMethods(parent);
+  InitParentMethods(parent);
 
   methods_impl_.reserve(methods_impl_.size() + methods.size() + 1);
   methods_.reserve(methods_.size() + methods.size() + 1);
@@ -83,7 +79,10 @@ const Method* Class::GetMethod(const std::string& name) const {
   return nullptr;
 }
 
-void Class::Print(ostream& os) {}
+void Class::Print(ostream& os) {
+  Closure empty;
+  GetMethod("__str__")->body->Execute(empty).TryAs<String>()->Print(os);
+}
 
 const std::string& Class::GetName() const { return name_; }
 

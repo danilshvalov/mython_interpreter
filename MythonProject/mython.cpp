@@ -1,7 +1,7 @@
 #include "object.h"
 #include "object_holder.h"
 #include "statement.h"
-#include "lexer.h"
+//#include "lexer.h"
 #include "parse.h"
 
 #include <test_runner.h>
@@ -118,14 +118,14 @@ print y.value
 
 void TestAll() {
   TestRunner tr;
-  Runtime::RunObjectHolderTests(tr);
-  Runtime::RunObjectsTests(tr);
-  Ast::RunUnitTests(tr);
+  //Runtime::RunObjectHolderTests(tr);
+  //Runtime::RunObjectsTests(tr);
+  //Ast::RunUnitTests(tr);
   //Parse::RunLexerTests(tr);
-  //TestParseProgram(tr);
+  TestParseProgram(tr);
 
-  RUN_TEST(tr, TestSimplePrints);
-  RUN_TEST(tr, TestAssignments);
-  RUN_TEST(tr, TestArithmetics);
-  RUN_TEST(tr, TestVariablesArePointers);
+  //RUN_TEST(tr, TestSimplePrints);
+  //RUN_TEST(tr, TestAssignments);
+  //RUN_TEST(tr, TestArithmetics);
+  //RUN_TEST(tr, TestVariablesArePointers);
 }

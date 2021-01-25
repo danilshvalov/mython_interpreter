@@ -55,7 +55,7 @@ ObjectHolder Print::Execute(Closure& closure) {
       *output << " ";
     }
     is_first = false;
-    if (auto object = argument->Execute(closure)) {
+    if (ObjectHolder object = argument->Execute(closure)) {
       object->Print(*output);
     } else {
       *output << "None";
@@ -75,7 +75,7 @@ MethodCall::MethodCall(unique_ptr<Statement> object, string method,
 
 ObjectHolder MethodCall::Execute(Closure& closure) {
   auto executed_obj = object->Execute(closure);
-  const auto& inst = executed_obj.TryAs<Runtime::ClassInstance>();
+  auto inst = executed_obj.TryAs<Runtime::ClassInstance>();
 
   if (!inst) {
     throw runtime_error("MethodCall works only with ClassInstance");
@@ -110,11 +110,11 @@ ObjectHolder Stringify::ToString(ObjectHolder object) {
 
 ObjectHolder Stringify::Execute(Closure& closure) {
   using Runtime::ClassInstance;
-  auto object = argument.release()->Execute(closure);
+  auto object = argument->Execute(closure);
+  const auto& inst = object.TryAs<ClassInstance>();
 
-  if (const auto& inst = object.TryAs<ClassInstance>(); inst) {
-    const auto& class_object = inst->Call("__str__", {});
-    return ToString(class_object);
+  if (inst) {
+    return ToString(inst->Call("__str__", {}));
   }
 
   return ToString(object);
@@ -180,15 +180,13 @@ ObjectHolder Compound::Execute(Closure& closure) {
 }
 
 ObjectHolder Return::Execute(Closure& closure) {
-  return statement->Execute(closure);
+  throw statement->Execute(closure);
 }
 
 ClassDefinition::ClassDefinition(ObjectHolder class_)
     : cls(move(class_)), class_name(cls.TryAs<Runtime::Class>()->GetName()) {}
 
-ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::None();
-}
+ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) { return cls; }
 
 FieldAssignment::FieldAssignment(VariableValue object, string field_name,
                                  unique_ptr<Statement> rv)
@@ -197,15 +195,6 @@ FieldAssignment::FieldAssignment(VariableValue object, string field_name,
       right_value(move(rv)) {}
 
 ObjectHolder FieldAssignment::Execute(Runtime::Closure& closure) {
-  // auto value = right_value->Execute(closure);
-  // for (const auto& idx : object.dotted_ids) {
-  //  if (auto it = closure.find(idx); it != closure.end()) {
-  //    it->second.TryAs<Runtime::ClassInstance>()->Fields().insert(
-  //        {field_name, move(value)});
-  //  }
-  //}
-
-  // return closure[field_name] = value;
   ObjectHolder cur_obj_holder = closure[object.dotted_ids.front()];
   for (size_t i = 1; i < object.dotted_ids.size(); ++i) {
     cur_obj_holder = cur_obj_holder.TryAs<Runtime::ClassInstance>()
@@ -222,10 +211,12 @@ IfElse::IfElse(unique_ptr<Statement> condition, unique_ptr<Statement> if_body,
       else_body(move(else_body)) {}
 
 ObjectHolder IfElse::Execute(Runtime::Closure& closure) {
-  if (condition->Execute(closure).TryAs<Runtime::Bool>()->GetValue()) {
-    return if_body->Execute(closure);
+  if (const auto& as_bool = condition->Execute(closure).TryAs<Runtime::Bool>();
+      as_bool) {
+    return (as_bool->GetValue() ? if_body->Execute(closure)
+                               : else_body->Execute(closure));
   }
-  return else_body->Execute(closure);
+  return ObjectHolder::None();
 }
 
 ObjectHolder Or::Execute(Runtime::Closure& closure) {
@@ -246,9 +237,11 @@ ObjectHolder Not::Execute(Runtime::Closure& closure) {
 }
 
 Comparison::Comparison(Comparator cmp, unique_ptr<Statement> lhs,
-                       unique_ptr<Statement> rhs) {}
+                       unique_ptr<Statement> rhs) : comparator(std::move(cmp)), left(std::move(lhs)), right(std::move(rhs)) {}
 
-ObjectHolder Comparison::Execute(Runtime::Closure& closure) { return {}; }
+ObjectHolder Comparison::Execute(Runtime::Closure& closure) {
+  return ObjectHolder::Own(Runtime::Bool(comparator(left->Execute(closure), right->Execute(closure))));
+}
 
 NewInstance::NewInstance(const Runtime::Class& class_,
                          vector<unique_ptr<Statement>> args)
@@ -258,7 +251,16 @@ NewInstance::NewInstance(const Runtime::Class& class_)
     : NewInstance(class_, {}) {}
 
 ObjectHolder NewInstance::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(Runtime::ClassInstance(class_));
+  Runtime::ClassInstance result(class_);
+  if (auto* m = class_.GetMethod("__init__"); m) {
+    vector<ObjectHolder> actual_args;
+    for (auto& stmt : args) {
+      actual_args.push_back(stmt->Execute(closure));
+    }
+
+    result.Call("__init__", std::move(actual_args));
+  }
+  return ObjectHolder::Own(std::move(result));
 }
 
 } /* namespace Ast */

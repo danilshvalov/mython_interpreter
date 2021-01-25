@@ -1,5 +1,9 @@
 #pragma once
 
+#include "lexer.h"
+#include "statement.h"
+#include "comparators.h"
+
 #include <memory>
 #include <stdexcept>
 

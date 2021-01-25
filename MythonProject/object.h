@@ -94,9 +94,9 @@ class ClassInstance : public Object {
   Closure& Fields();
   const Closure& Fields() const;
 
-  friend bool operator==(const ClassInstance& lhs, const ClassInstance& rhs) {
-    return &lhs.class_ == &rhs.class_;
-  }
+  //friend bool operator==(const ClassInstance& lhs, const ClassInstance& rhs) {
+  //  return &lhs.class_ == &rhs.class_;
+  //}
 };
 
 void RunObjectsTests(TestRunner& test_runner);
