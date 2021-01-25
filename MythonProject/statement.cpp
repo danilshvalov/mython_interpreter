@@ -93,7 +93,7 @@ ObjectHolder Stringify::ToString(ObjectHolder object) {
   using Runtime::Number, Runtime::String, Runtime::Bool;
 
   if (const auto& inst = object.TryAs<String>(); inst) {
-    return object;
+    return ObjectHolder::Own(String(inst->GetValue()));
   }
 
   if (const auto& inst = object.TryAs<Number>(); inst) {
@@ -117,7 +117,7 @@ ObjectHolder Stringify::Execute(Closure& closure) {
     return ToString(inst->Call("__str__", {}));
   }
 
-  return ToString(object);
+  return ToString(std::move(object));
 }
 
 ObjectHolder Add::Execute(Closure& closure) {
@@ -211,10 +211,11 @@ IfElse::IfElse(unique_ptr<Statement> condition, unique_ptr<Statement> if_body,
       else_body(move(else_body)) {}
 
 ObjectHolder IfElse::Execute(Runtime::Closure& closure) {
-  if (const auto& as_bool = condition->Execute(closure).TryAs<Runtime::Bool>();
-      as_bool) {
-    return (as_bool->GetValue() ? if_body->Execute(closure)
-                               : else_body->Execute(closure));
+  const auto& value = condition->Execute(closure);
+  if (Runtime::IsTrue(value)) {
+    if_body->Execute(closure);
+  } else if (else_body) {
+    else_body->Execute(closure);
   }
   return ObjectHolder::None();
 }
@@ -237,10 +238,12 @@ ObjectHolder Not::Execute(Runtime::Closure& closure) {
 }
 
 Comparison::Comparison(Comparator cmp, unique_ptr<Statement> lhs,
-                       unique_ptr<Statement> rhs) : comparator(std::move(cmp)), left(std::move(lhs)), right(std::move(rhs)) {}
+                       unique_ptr<Statement> rhs)
+    : comparator(std::move(cmp)), left(std::move(lhs)), right(std::move(rhs)) {}
 
 ObjectHolder Comparison::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(Runtime::Bool(comparator(left->Execute(closure), right->Execute(closure))));
+  bool result = comparator(left->Execute(closure), right->Execute(closure));
+  return ObjectHolder::Own(Runtime::Bool(result));
 }
 
 NewInstance::NewInstance(const Runtime::Class& class_,
