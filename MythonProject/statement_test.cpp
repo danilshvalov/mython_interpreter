@@ -285,13 +285,13 @@ void TestCompound() {
 }
 
 void RunUnitTests(TestRunner& tr) {
-  //RUN_TEST(tr, Ast::TestNumericConst);
-  //RUN_TEST(tr, Ast::TestStringConst);
-  //RUN_TEST(tr, Ast::TestVariable);
-  //RUN_TEST(tr, Ast::TestAssignment);
-  //RUN_TEST(tr, Ast::TestFieldAssignment);
-  //RUN_TEST(tr, Ast::TestPrintVariable);
-  //RUN_TEST(tr, Ast::TestPrintMultipleStatements);
+  RUN_TEST(tr, Ast::TestNumericConst);
+  RUN_TEST(tr, Ast::TestStringConst);
+  RUN_TEST(tr, Ast::TestVariable);
+  RUN_TEST(tr, Ast::TestAssignment);
+  RUN_TEST(tr, Ast::TestFieldAssignment);
+  RUN_TEST(tr, Ast::TestPrintVariable);
+  RUN_TEST(tr, Ast::TestPrintMultipleStatements);
   RUN_TEST(tr, Ast::TestStringify);
   RUN_TEST(tr, Ast::TestNumbersAddition);
   RUN_TEST(tr, Ast::TestStringsAddition);

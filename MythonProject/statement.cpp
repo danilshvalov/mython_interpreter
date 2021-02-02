@@ -62,7 +62,7 @@ ObjectHolder Print::Execute(Closure& closure) {
     }
   }
   *output << '\n';
-  return {};
+  return ObjectHolder::None();
 }
 
 ostream* Print::output = &cout;
@@ -154,21 +154,52 @@ ObjectHolder Add::Execute(Closure& closure) {
 }
 
 ObjectHolder Sub::Execute(Closure& closure) {
-  return ObjectHolder::Own(Runtime::Number(
-      lhs->Execute(closure).TryAs<Runtime::Number>()->GetValue() -
-      rhs->Execute(closure).TryAs<Runtime::Number>()->GetValue()));
+  auto [left_obj, right_obj] =
+      make_tuple(lhs->Execute(closure), rhs->Execute(closure));
+
+  if (const auto& [left_inst, right_inst] =
+          make_tuple(left_obj.TryAs<Runtime::Number>(),
+                     right_obj.TryAs<Runtime::Number>());
+      left_inst && right_inst) {
+    return ObjectHolder::Own(
+        Runtime::Number(left_inst->GetValue() - right_inst->GetValue()));
+  }
+
+  throw runtime_error("Sub: Wrong values");
 }
 
 ObjectHolder Mult::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(Runtime::Number(
-      lhs->Execute(closure).TryAs<Runtime::Number>()->GetValue() *
-      rhs->Execute(closure).TryAs<Runtime::Number>()->GetValue()));
+  auto [left_obj, right_obj] =
+      make_tuple(lhs->Execute(closure), rhs->Execute(closure));
+
+  if (const auto& [left_inst, right_inst] =
+          make_tuple(left_obj.TryAs<Runtime::Number>(),
+                     right_obj.TryAs<Runtime::Number>());
+      left_inst && right_inst) {
+    return ObjectHolder::Own(
+        Runtime::Number(left_inst->GetValue() * right_inst->GetValue()));
+  }
+
+  throw runtime_error("Mult: Wrong values");
 }
 
 ObjectHolder Div::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(Runtime::Number(
-      lhs->Execute(closure).TryAs<Runtime::Number>()->GetValue() /
-      rhs->Execute(closure).TryAs<Runtime::Number>()->GetValue()));
+  auto [left_obj, right_obj] =
+      make_tuple(lhs->Execute(closure), rhs->Execute(closure));
+
+  if (const auto& [left_inst, right_inst] =
+          make_tuple(left_obj.TryAs<Runtime::Number>(),
+                     right_obj.TryAs<Runtime::Number>());
+      left_inst && right_inst) {
+    if (right_inst->GetValue() == 0) {
+      throw runtime_error("Div: Divide by zero");
+    }
+
+    return ObjectHolder::Own(
+        Runtime::Number(left_inst->GetValue() / right_inst->GetValue()));
+  }
+
+  throw runtime_error("Div: Wrong values");
 }
 
 ObjectHolder Compound::Execute(Closure& closure) {
@@ -186,7 +217,10 @@ ObjectHolder Return::Execute(Closure& closure) {
 ClassDefinition::ClassDefinition(ObjectHolder class_)
     : cls(move(class_)), class_name(cls.TryAs<Runtime::Class>()->GetName()) {}
 
-ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) { return cls; }
+ObjectHolder ClassDefinition::Execute(Runtime::Closure& closure) {
+  closure[class_name] = cls;
+  return ObjectHolder::None();
+}
 
 FieldAssignment::FieldAssignment(VariableValue object, string field_name,
                                  unique_ptr<Statement> rv)
@@ -195,13 +229,12 @@ FieldAssignment::FieldAssignment(VariableValue object, string field_name,
       right_value(move(rv)) {}
 
 ObjectHolder FieldAssignment::Execute(Runtime::Closure& closure) {
-  ObjectHolder cur_obj_holder = closure[object.dotted_ids.front()];
-  for (size_t i = 1; i < object.dotted_ids.size(); ++i) {
-    cur_obj_holder = cur_obj_holder.TryAs<Runtime::ClassInstance>()
-                         ->Fields()[object.dotted_ids[i]];
+  auto inst = object.Execute(closure);
+  if (auto cls_inst = inst.TryAs<Runtime::ClassInstance>(); cls_inst) {
+    return cls_inst->Fields()[field_name] = right_value->Execute(closure);
   }
-  return cur_obj_holder.TryAs<Runtime::ClassInstance>()->Fields()[field_name] =
-             right_value->Execute(closure);
+
+  throw runtime_error("FieldAssignment: Wrong value");
 }
 
 IfElse::IfElse(unique_ptr<Statement> condition, unique_ptr<Statement> if_body,
@@ -221,20 +254,23 @@ ObjectHolder IfElse::Execute(Runtime::Closure& closure) {
 }
 
 ObjectHolder Or::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(
-      Runtime::Bool(lhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue() ||
-                    rhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue()));
+  if (Runtime::IsTrue(lhs->Execute(closure)) ||
+      Runtime::IsTrue(rhs->Execute(closure))) {
+    return ObjectHolder::Own(Runtime::Bool(true));
+  }
+  return ObjectHolder::Own(Runtime::Bool(false));
 }
 
 ObjectHolder And::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(
-      Runtime::Bool(lhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue() &&
-                    rhs->Execute(closure).TryAs<Runtime::Bool>()->GetValue()));
+  if (Runtime::IsTrue(lhs->Execute(closure)) &&
+      Runtime::IsTrue(rhs->Execute(closure))) {
+    return ObjectHolder::Own(Runtime::Bool(true));
+  }
+  return ObjectHolder::Own(Runtime::Bool(false));
 }
 
 ObjectHolder Not::Execute(Runtime::Closure& closure) {
-  return ObjectHolder::Own(Runtime::Bool(
-      argument->Execute(closure).TryAs<Runtime::Bool>()->GetValue()));
+  return ObjectHolder::Own(Runtime::Bool(!Runtime::IsTrue(argument->Execute(closure))));
 }
 
 Comparison::Comparison(Comparator cmp, unique_ptr<Statement> lhs,
@@ -242,8 +278,8 @@ Comparison::Comparison(Comparator cmp, unique_ptr<Statement> lhs,
     : comparator(std::move(cmp)), left(std::move(lhs)), right(std::move(rhs)) {}
 
 ObjectHolder Comparison::Execute(Runtime::Closure& closure) {
-  bool result = comparator(left->Execute(closure), right->Execute(closure));
-  return ObjectHolder::Own(Runtime::Bool(result));
+	return ObjectHolder::Own(Runtime::Bool(
+      comparator(left->Execute(closure), right->Execute(closure))));
 }
 
 NewInstance::NewInstance(const Runtime::Class& class_,
@@ -261,7 +297,7 @@ ObjectHolder NewInstance::Execute(Runtime::Closure& closure) {
       actual_args.push_back(stmt->Execute(closure));
     }
 
-    result.Call("__init__", std::move(actual_args));
+    result.Call("__init__", actual_args);
   }
   return ObjectHolder::Own(std::move(result));
 }

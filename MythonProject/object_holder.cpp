@@ -30,11 +30,19 @@ bool IsTrue(ObjectHolder object) {
     return false;
   }
 
-	if (const auto& numeric = object.TryAs<Number>()) {
-		return numeric->GetValue() == 0;
+	if (const auto& numeric = object.TryAs<Number>(); numeric) {
+		return numeric->GetValue() != 0;
   }
 
-  return object.TryAs<Bool>()->GetValue();
+	if (const auto& str = object.TryAs<String>(); str) {
+		return !str->GetValue().empty();
+	}
+
+	if (const auto& boolean = object.TryAs<Bool>(); boolean) {
+		return boolean->GetValue();
+	}
+
+  return false;
 }
 
 }  // namespace Runtime

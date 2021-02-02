@@ -2,17 +2,17 @@
 #include "object_holder.h"
 #include "statement.h"
 //#include "lexer.h"
-#include "parse.h"
-
 #include <test_runner.h>
 
+#include <fstream>
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
-#include <fstream>
-#include <sstream>
+
+#include "parse.h"
 
 using namespace std;
 
@@ -50,7 +50,8 @@ print None
   ostringstream output;
   RunMythonProgram(input, output);
 
-  ASSERT_EQUAL(output.str(), "57\n10 24 -8\nhello\nworld\nTrue False\n\nNone\n");
+  ASSERT_EQUAL(output.str(),
+               "57\n10 24 -8\nhello\nworld\nTrue False\n\nNone\n");
 }
 
 void TestAssignments() {
@@ -72,10 +73,19 @@ print x, y
   ASSERT_EQUAL(output.str(), "57\nC++ black belt\nFalse\nNone False\n");
 }
 
+void TestConditionalConstructions() {
+  istringstream input(R"(
+print 1 > 2, 2 < 3, (1 > 2) or (2 < 3), (1 > 2) and (2 < 3)
+)");
+  ostringstream output;
+
+  RunMythonProgram(input, output);
+  ASSERT_EQUAL(output.str(), "False True True False\n");
+}
+
 void TestArithmetics() {
   istringstream input(
-    "print 1+2+3+4+5, 1*2*3*4*5, 1-2-3-4-5, 36/4/3, 2*5+10/2"
-  );
+      "print 1+2+3+4+5, 1*2*3*4*5, 1-2-3-4-5, 36/4/3, 2*5+10/2");
 
   ostringstream output;
   RunMythonProgram(input, output);
@@ -121,11 +131,12 @@ void TestAll() {
   Runtime::RunObjectHolderTests(tr);
   Runtime::RunObjectsTests(tr);
   Ast::RunUnitTests(tr);
-  //Parse::RunLexerTests(tr);
+  // Parse::RunLexerTests(tr);
   TestParseProgram(tr);
 
   RUN_TEST(tr, TestSimplePrints);
   RUN_TEST(tr, TestAssignments);
   RUN_TEST(tr, TestArithmetics);
   RUN_TEST(tr, TestVariablesArePointers);
+  RUN_TEST(tr, TestConditionalConstructions);
 }
